@@ -78,7 +78,7 @@ Provisioned. Remaining manual steps (no API for these):
   1. Commit + push ../build and let GitHub Pages redeploy.
   2. Smoke-test a real submission, then:
        wrangler d1 execute $DB_NAME --remote --command "SELECT * FROM leads ORDER BY id DESC LIMIT 5"
-  3. Analytics: the page already counts traffic with no account (./analytics.sh
+  3. Analytics: the page already counts traffic with no account (./analytics.py
      reads it). To move to a real provider, set exactly one key in the
      ANALYTICS object in index.html and redeploy:
        - posthogKey       (EU cloud, free tier, gives traffic + conversion)

@@ -446,6 +446,31 @@
       font-weight: 600;
       text-decoration: underline;
     }
+    .form-status p { margin: 0 0 0.6rem; }
+    .fallback-alt { font-size: 0.82rem; opacity: 0.85; }
+    textarea.fallback-copy {
+      width: 100%;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--gray-900);
+      background: #fff;
+      border: 1px solid var(--gray-400);
+      border-radius: 8px;
+      padding: 0.6rem 0.7rem;
+      resize: vertical;
+    }
+    .fallback-copy-btn {
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
     .form-success {
       max-width: 560px;
       margin: 0 auto;
@@ -861,7 +886,7 @@
       other: 'Something else'
     };
 
-    function mailtoFor(data) {
+    function fallbackLines(data) {
       var lines = [
         'Name: ' + data.name,
         'Email: ' + data.email,
@@ -872,26 +897,69 @@
       ];
       if (data.referrer) lines.push('', 'Came from: ' + data.referrer);
       if (data.landing_query) lines.push('Landing query: ' + data.landing_query);
-
-      return 'mailto:' + FALLBACK_EMAIL +
-        '?subject=' + encodeURIComponent('Cohort details request — ' + data.name) +
-        '&body=' + encodeURIComponent(lines.join('\n'));
+      return lines;
     }
 
+    function mailtoFor(data) {
+      return 'mailto:' + FALLBACK_EMAIL +
+        '?subject=' + encodeURIComponent('Cohort details request — ' + data.name) +
+        '&body=' + encodeURIComponent(fallbackLines(data).join('\n'));
+    }
+
+    // A mailto: link is a dead end for anyone without a mail client wired to
+    // the browser, and we cannot tell that it failed. So offer a copy path too
+    // and track which one they actually take.
     function emailFallback(data, failed) {
       track('form/fallback');
+      status.className = 'form-status ' + (failed ? 'error' : 'notice');
+      status.textContent = '';
+
+      var lead = document.createElement('p');
+      lead.textContent = failed
+        ? "That didn't send — nothing you typed is lost. "
+        : "We're finishing our signup form this week. In the meantime, ";
       var link = document.createElement('a');
       link.href = mailtoFor(data);
-      link.textContent = 'send it to us by email instead';
+      link.textContent = 'email it to us, prefilled';
+      link.addEventListener('click', function () { track('form/fallback-mailto'); });
+      lead.appendChild(link);
+      lead.appendChild(document.createTextNode('.'));
+      status.appendChild(lead);
 
-      status.className = 'form-status ' + (failed ? 'error' : 'notice');
-      status.textContent = failed
-        ? "That didn't send. Nothing is lost — "
-        : "We're finishing our signup form this week. In the meantime, ";
-      status.appendChild(link);
-      status.appendChild(document.createTextNode(
-        ' — it opens prefilled with what you typed, so there is nothing to retype.'
-      ));
+      var alt = document.createElement('p');
+      alt.className = 'fallback-alt';
+      alt.textContent = 'No mail app on this device? Copy this and send it to ' +
+        FALLBACK_EMAIL + ':';
+      status.appendChild(alt);
+
+      var box = document.createElement('textarea');
+      box.className = 'fallback-copy';
+      box.readOnly = true;
+      box.rows = 6;
+      box.value = fallbackLines(data).join('\n');
+      status.appendChild(box);
+
+      var copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'fallback-copy-btn';
+      copy.textContent = 'Copy my details';
+      copy.addEventListener('click', function () {
+        function done() { copy.textContent = 'Copied'; track('form/fallback-copy'); }
+
+        // execCommand is deprecated but synchronous inside the click gesture,
+        // so it works where the async clipboard API is blocked. If both fail,
+        // leave the text selected so Cmd/Ctrl+C still does the job.
+        var ok = false;
+        try { box.select(); ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        if (ok) { done(); return; }
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(box.value).then(done, function () { box.select(); });
+        } else {
+          box.select();
+        }
+      });
+      status.appendChild(copy);
+
       status.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
       button.disabled = false;
