@@ -435,6 +435,17 @@
       color: #991b1b;
       border: 1px solid #fecaca;
     }
+    .form-status.notice {
+      display: block;
+      background: var(--teal-50);
+      color: var(--teal-800);
+      border: 1px solid var(--teal-100);
+    }
+    .form-status a {
+      color: inherit;
+      font-weight: 600;
+      text-decoration: underline;
+    }
     .form-success {
       max-width: 560px;
       margin: 0 auto;
@@ -694,6 +705,8 @@
 
 <script>
   var LEAD_ENDPOINT = 'https://rooted-abroad-leads.__CF_SUBDOMAIN__.workers.dev/leads';
+  var ENDPOINT_READY = LEAD_ENDPOINT.indexOf('__CF_SUBDOMAIN__') === -1;
+  var FALLBACK_EMAIL = 'hello@rootedabroad.com';
 
   (function () {
     var nav = document.querySelector('nav');
@@ -740,6 +753,8 @@
         landing_query: location.search || ''
       };
 
+      if (!ENDPOINT_READY) { emailFallback(data, false); return; }
+
       button.disabled = true;
       button.textContent = 'Sending…';
 
@@ -755,13 +770,51 @@
           success.scrollIntoView({ block: 'center', behavior: 'smooth' });
         })
         .catch(function () {
-          status.className = 'form-status error';
-          status.textContent =
-            "Something went wrong sending that. Please email us at hello@rootedabroad.com and we'll pick it up from there.";
-          button.disabled = false;
-          button.textContent = 'Request cohort details';
+          emailFallback(data, true);
         });
     });
+
+    var ROLE_LABELS = {
+      partner: 'The accompanying partner',
+      buyer: 'HR / global mobility',
+      other: 'Something else'
+    };
+
+    function mailtoFor(data) {
+      var lines = [
+        'Name: ' + data.name,
+        'Email: ' + data.email,
+        'Role: ' + (ROLE_LABELS[data.role] || data.role),
+        '',
+        'Employer & relocation context:',
+        data.context.slice(0, 900) || '(not provided)'
+      ];
+      if (data.referrer) lines.push('', 'Came from: ' + data.referrer);
+      if (data.landing_query) lines.push('Landing query: ' + data.landing_query);
+
+      return 'mailto:' + FALLBACK_EMAIL +
+        '?subject=' + encodeURIComponent('Cohort details request — ' + data.name) +
+        '&body=' + encodeURIComponent(lines.join('\n'));
+    }
+
+    function emailFallback(data, failed) {
+      var link = document.createElement('a');
+      link.href = mailtoFor(data);
+      link.textContent = 'send it to us by email instead';
+
+      status.className = 'form-status ' + (failed ? 'error' : 'notice');
+      status.textContent = failed
+        ? "That didn't send. Nothing is lost — "
+        : "We're finishing our signup form this week. In the meantime, ";
+      status.appendChild(link);
+      status.appendChild(document.createTextNode(
+        ' — it opens prefilled with what you typed, so there is nothing to retype.'
+      ));
+      status.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+      button.disabled = false;
+      button.textContent = 'Request cohort details';
+    }
   })();
 </script>
 

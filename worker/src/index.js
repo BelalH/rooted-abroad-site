@@ -29,6 +29,13 @@ export default {
     if (url.pathname !== '/leads') return json({ error: 'not_found' }, 404, headers);
     if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, headers);
 
+    if (env.LEADS_LIMIT) {
+      const { success } = await env.LEADS_LIMIT.limit({
+        key: request.headers.get('CF-Connecting-IP') || 'unknown',
+      });
+      if (!success) return json({ error: 'rate_limited' }, 429, headers);
+    }
+
     let body;
     try {
       body = await request.json();
