@@ -11,5 +11,6 @@ CREATE TABLE IF NOT EXISTS leads (
   user_agent    TEXT
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS leads_email_unique ON leads (email);
+-- Deliberately not unique: every submission is signal, dedupe on read.
+CREATE INDEX IF NOT EXISTS leads_email ON leads (email);
 CREATE INDEX IF NOT EXISTS leads_created_at ON leads (created_at);

@@ -71,9 +71,6 @@ export default {
         )
         .run();
     } catch (err) {
-      if (String(err?.message ?? '').includes('UNIQUE')) {
-        return json({ ok: true, duplicate: true }, 200, headers);
-      }
       console.error('lead_insert_failed', err);
       return json({ error: 'storage_failed' }, 500, headers);
     }
