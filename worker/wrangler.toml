@@ -1,0 +1,11 @@
+name = "rooted-abroad-leads"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://belalh.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rooted-abroad-leads"
+database_id = "__SET_AFTER_CREATE__"
