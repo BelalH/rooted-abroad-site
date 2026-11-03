@@ -701,12 +701,85 @@
 <!-- Footer -->
 <footer>
   <p>&copy; 2026 Rooted Abroad. All rights reserved.</p>
+  <p>We count page views anonymously. No cookies, no tracking across sites, no profiles.</p>
 </footer>
 
 <script>
   var LEAD_ENDPOINT = 'https://rooted-abroad-leads.__CF_SUBDOMAIN__.workers.dev/leads';
   var ENDPOINT_READY = LEAD_ENDPOINT.indexOf('__CF_SUBDOMAIN__') === -1;
-  var FALLBACK_EMAIL = 'hello@rootedabroad.com';
+  // rootedabroad.com is registered to a third party with a dead delegation: no
+  // nameservers answer, no MX. Mail to hello@rootedabroad.com is undeliverable.
+  var FALLBACK_EMAIL = 'hello@kafupeople.com';
+
+  // Interim instrumentation. hits.sh needs no account, so the page is measured
+  // from today; swap by filling in any one real provider key below.
+  var ANALYTICS = {
+    counterBase: 'https://hits.sh/rooted-abroad.k7m2/',
+    posthogKey: '__POSTHOG_KEY__',
+    posthogHost: 'https://eu.i.posthog.com',
+    plausibleDomain: '__PLAUSIBLE_DOMAIN__',
+    cfBeaconToken: '__CF_BEACON_TOKEN__'
+  };
+
+  var track = (function () {
+    function set(v) { return v && v.indexOf('__') !== 0; }
+
+    function script(src, attrs) {
+      var el = document.createElement('script');
+      el.src = src;
+      el.defer = true;
+      Object.keys(attrs || {}).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+      document.head.appendChild(el);
+    }
+
+    if (set(ANALYTICS.posthogKey)) {
+      script(ANALYTICS.posthogHost + '/static/array.js');
+      var ph = window.posthog = window.posthog || [];
+      ph.push(['init', ANALYTICS.posthogKey, { api_host: ANALYTICS.posthogHost }]);
+      return function (event, props) { ph.push(['capture', event, props]); };
+    }
+
+    if (set(ANALYTICS.plausibleDomain)) {
+      script('https://plausible.io/js/script.js', { 'data-domain': ANALYTICS.plausibleDomain });
+      var pl = window.plausible = window.plausible ||
+        function () { (pl.q = pl.q || []).push(arguments); };
+      return function (event, props) { pl(event, { props: props }); };
+    }
+
+    if (set(ANALYTICS.cfBeaconToken)) {
+      script('https://static.cloudflareinsights.com/beacon.min.js', {
+        'data-cf-beacon': JSON.stringify({ token: ANALYTICS.cfBeaconToken })
+      });
+      return function () {};
+    }
+
+    // No provider yet: count anonymously. One integer per bucket, no cookies,
+    // no identifiers, nothing about the visitor leaves beyond the request
+    // itself. Event properties become their own buckets, since a bare counter
+    // cannot carry dimensions.
+    function bump(key) {
+      new Image().src = ANALYTICS.counterBase +
+        key.replace(/[^a-z0-9/_-]/gi, '-') + '.svg?t=' + Date.now();
+    }
+
+    return function (event, props) {
+      bump(event);
+      Object.keys(props || {}).forEach(function (k) { bump(k + '/' + props[k]); });
+    };
+  })();
+
+  (function () {
+    var src = (location.search.match(/[?&]utm_source=([^&]+)/) || [])[1];
+    if (!src && document.referrer) {
+      try {
+        src = new URL(document.referrer).hostname.replace(/^www\./, '');
+      } catch (e) { /* opaque referrer */ }
+    }
+    track('pageview', {
+      source: src ? decodeURIComponent(src).toLowerCase() : 'direct',
+      device: window.matchMedia('(max-width: 768px)').matches ? 'mobile' : 'desktop'
+    });
+  })();
 
   (function () {
     var nav = document.querySelector('nav');
@@ -726,6 +799,11 @@
     var status = document.getElementById('form-status');
     var success = document.getElementById('form-success');
     var button = document.getElementById('lf-submit');
+
+    form.addEventListener('focusin', function started() {
+      form.removeEventListener('focusin', started);
+      track('form/start');
+    });
 
     function validate() {
       var ok = true;
@@ -753,6 +831,8 @@
         landing_query: location.search || ''
       };
 
+      track('form/submit', { role: data.role });
+
       if (!ENDPOINT_READY) { emailFallback(data, false); return; }
 
       button.disabled = true;
@@ -765,6 +845,7 @@
       })
         .then(function (res) {
           if (!res.ok) throw new Error('HTTP ' + res.status);
+          track('form/stored');
           form.hidden = true;
           success.hidden = false;
           success.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -798,6 +879,7 @@
     }
 
     function emailFallback(data, failed) {
+      track('form/fallback');
       var link = document.createElement('a');
       link.href = mailtoFor(data);
       link.textContent = 'send it to us by email instead';

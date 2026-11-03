@@ -5,8 +5,8 @@
 #   `wrangler login`, or CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.
 #
 # Usage: ./provision.sh [location-hint]     # default: weur (EU West)
-#   D1 location is fixed at creation time. Changing it later means
-#   migrate-and-cutover, so pass this deliberately.
+#   EU residency is confirmed (MOD-6). D1 location is fixed at creation time,
+#   so only override this argument on a deliberate, signed-off decision.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -15,6 +15,12 @@ DB_NAME="rooted-abroad-leads"
 LOCATION="${1:-weur}"
 SITE_HTML="../site/public/index.html"
 BUILD_HTML="../build/index.html"
+
+if [[ "$LOCATION" != weur && "$LOCATION" != eeur && "${ALLOW_NON_EU:-}" != 1 ]]; then
+  echo "refusing to create the lead DB outside the EU ($LOCATION)." >&2
+  echo "EU residency is a signed-off requirement; set ALLOW_NON_EU=1 to override." >&2
+  exit 1
+fi
 
 db_id() {
   wrangler d1 info "$DB_NAME" --json 2>/dev/null | python3 -c \
@@ -72,9 +78,14 @@ Provisioned. Remaining manual steps (no API for these):
   1. Commit + push ../build and let GitHub Pages redeploy.
   2. Smoke-test a real submission, then:
        wrangler d1 execute $DB_NAME --remote --command "SELECT * FROM leads ORDER BY id DESC LIMIT 5"
-  3. Cloudflare dashboard -> Web Analytics -> add site
-     belalh.github.io/rooted-abroad-site, then paste the beacon snippet
-     before </body> in site/public/index.html.
+  3. Analytics: the page already counts traffic with no account (./analytics.sh
+     reads it). To move to a real provider, set exactly one key in the
+     ANALYTICS object in index.html and redeploy:
+       - posthogKey       (EU cloud, free tier, gives traffic + conversion)
+       - plausibleDomain
+       - cfBeaconToken    (Cloudflare dashboard -> Web Analytics -> add site)
+     Whichever is set wins; the account-free counters switch themselves off.
 
 Rate limiting is already in the Worker (20 POST/min per IP, LEADS_LIMIT binding).
+The lead DB is created in the EU ($LOCATION) — fixed at creation, per MOD-6.
 EOF
