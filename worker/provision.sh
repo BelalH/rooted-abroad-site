@@ -75,6 +75,10 @@ done
 cat <<EOF
 
 Provisioned. Remaining manual steps (no API for these):
+  0. privacy.html describes the Cloudflare/D1 submission path as planned, not
+     live. Flip that wording (the "What we collect" section and the "Last
+     updated" date) in ../site/public/privacy.html before pushing, or the
+     policy misstates where enquiry data goes.
   1. Commit + push ../build and let GitHub Pages redeploy.
   2. Smoke-test a real submission, then:
        wrangler d1 execute $DB_NAME --remote --command "SELECT * FROM leads ORDER BY id DESC LIMIT 5"

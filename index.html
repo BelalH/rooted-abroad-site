@@ -422,6 +422,7 @@
       margin-top: 0.9rem;
       line-height: 1.5;
     }
+    .form-note a { color: var(--teal-700); }
     .form-status {
       display: none;
       font-size: 0.9rem;
@@ -494,6 +495,8 @@
       padding: 2.5rem 1.5rem;
       font-size: 0.85rem;
     }
+    footer a { color: var(--teal-100); }
+    footer p + p { margin-top: 0.4rem; }
 
     /* ── MOBILE ── */
     @media (max-width: 768px) {
@@ -713,7 +716,8 @@
       </div>
 
       <button type="submit" id="lf-submit">Request cohort details</button>
-      <p class="form-note">We'll only use this to contact you about the programme. No newsletters, no sharing with third parties.</p>
+      <p class="form-note">We'll only use this to contact you about the programme. No newsletters, no sharing with third parties.
+        <a href="privacy.html">What we do with your details</a>.</p>
     </form>
 
     <div class="form-success" id="form-success" hidden>
@@ -727,6 +731,7 @@
 <footer>
   <p>&copy; 2026 Rooted Abroad. All rights reserved.</p>
   <p>We count page views anonymously. No cookies, no tracking across sites, no profiles.</p>
+  <p><a href="privacy.html">Privacy &amp; data handling</a> — what we collect, why, how long we keep it, and how to have it deleted.</p>
 </footer>
 
 <script>
@@ -917,10 +922,11 @@
       var lead = document.createElement('p');
       lead.textContent = failed
         ? "That didn't send — nothing you typed is lost. "
-        : "We're finishing our signup form this week. In the meantime, ";
+        : 'Email is how we take first enquiries — from employers and partners alike. ' +
+          'Your details are ready to ';
       var link = document.createElement('a');
       link.href = mailtoFor(data);
-      link.textContent = 'email it to us, prefilled';
+      link.textContent = failed ? 'email it to us, prefilled' : 'send to us, prefilled';
       link.addEventListener('click', function () { track('form/fallback-mailto'); });
       lead.appendChild(link);
       lead.appendChild(document.createTextNode('.'));
